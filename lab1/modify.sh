@@ -36,43 +36,69 @@ Options:
 }
 
 handle_lowerizing(){
+# function for changing great letters into small
+# it finds filename and then overwrites it with new filename using small letters
     local input=("$@")
 
     for filepath in ${input[@]}; do
         local dirpath=$(dirname "$filepath")
         local filename=$(basename "$filepath")
+        local extension=$(get_extension $filename)
+        filename=${filename%.*}
         local new_filename=$(echo "$filename" | tr A-Z a-z)
+        new_filename+="${extension}"
         overwrite $filepath $dirpath $new_filename
     done
 }
 
 handle_uppercasing(){
+# function for changing small letters into great
+# it finds filename and then overwrites it with new filename using great letters
     local input=("$@")
 
     for filepath in ${input[@]}; do
         local dirpath=$(dirname "$filepath")
         local filename=$(basename "$filepath")
+        local extension=$(get_extension $filename)
+        filename=${filename%.*}
         local new_filename=$(echo "$filename" | tr a-z A-Z)
+        new_filename+="${extension}"
         overwrite $filepath $dirpath $new_filename
     done
 }
 
 handle_sed(){
+# function for changing name using sed pattern
+# it finds filename and then overwrites it with new filename using sed
+
     local input=("$@")
-    echo "INPUT SED1 ${input[@]}"
     local pattern=${input[0]}
     local input=("${input[@]:1}")
-    echo "INPUT SED2 ${input[@]}"
 
     for filepath in ${input[@]}; do
         local dirpath=$(dirname "$filepath")
         local filename=$(basename "$filepath")
+        local extension=$(get_extension $filename)
+        filename=${filename%.*}
         local new_filename=$(echo "$filename" | sed "$pattern")
+        new_filename+="${extension}"
         overwrite $filepath $dirpath $new_filename
     done
 }
 
+get_extension(){
+# return .extension of file if there is a dot within filename
+# does not return if the dot is only on first place
+# in other case, return empty string
+    local filename=$1
+    case $filename in
+        ?*.*) echo ".${filename##*.}" ;;
+        *) echo "" ;;
+    esac
+}
+
 overwrite(){
+# overwrites old filename with new one, whole filepath is needed to create it
     local filepath=$1
     local dirpath=$2
     local new_filename=$3
@@ -86,18 +112,21 @@ overwrite(){
 }
 
 handle_recursive(){
+# function triggered when -r goes in
+# firstly checks for exceptions like in choose_action
+# then it writes down the action flag
+# then it checks if the sed param is given, and if true saves its patternn into var
+# leaves only arguments with directories
+# for each argument (<dir/.../...> kind) is called recursive execution
     local input=("$@")
-    echo "INPUT 1 ${input[@]}"
     handle_no_input ${input[0]}
     local action=${input[0]}
     local sed_pattern=""
     input=("${input[@]:1}")
-    echo "INPUT 2 ${input[@]}"
     if [ "$action" = "sed" ]; then
         sed_pattern="${input[0]}"
         input=("${input[@]:1}")
     fi
-    echo "INPUT 3 ${input[@]}"
 
     for directory in $input; do
         single_dir_recursive_execution $directory $action $sed_pattern
@@ -106,15 +135,20 @@ handle_recursive(){
 }
 
 single_dir_recursive_execution(){
+# main recursive execusion function
+# it stores all data and creates an directories_array
+# all data - flag, and options are stored at the begging of directories_array
+# it stores all files as separate arguments in an directories_array
+# if it finds another directory, it recursively calls itself on goes deeper
+# directories_array is created for each directory level
+# after all it is passed to choose_action function and works like not recursive
     local dir_level=$1
     local action=$2
     local possible_sed_pattern=$3
     local directories_array=("$action")
-    echo "DIR ARR ACTION ${directories_array[@]}"
     if [ -n "${possible_sed_pattern}" ]; then
         directories_array+=("$possible_sed_pattern")
     fi
-    echo "DIR ARR ${directories_array[@]}"
 
     for element in "$dir_level"/*; do
         if [ -d "$element" ]; then
@@ -130,11 +164,13 @@ single_dir_recursive_execution(){
 }
 
 handle_exceptions(){
+# function calling handling ones
     handle_no_input $1
     handle_wrong_input $1
 }
 
 handle_no_input() {
+# function handling case without input
     local input="$1"
     if [ -z $input ]; then
         echo "modify: no input"
@@ -144,6 +180,7 @@ handle_no_input() {
 }
 
 handle_wrong_input(){
+# function handling input that is not an option
     local input="$1"
     if [ -n $input ]; then
         local input="$1"
@@ -153,6 +190,8 @@ handle_wrong_input(){
 }
 
 choose_action(){
+# main function directing to execute ones depending on arguments given
+# first argument is option, then there are remaining parameters
     local input=("$@")
     local action=${input[0]}
     case $action in
@@ -165,5 +204,6 @@ choose_action(){
     esac
 }
 
+# loading arguments into array and calling function, passing them there
 args=("$@")
 choose_action ${args[@]}

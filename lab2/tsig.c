@@ -137,17 +137,17 @@ void wait_function() {
             wrong_counter++;
         }
     }
-    
+
     printf("There are no more child processes\n");
     printf("Child processes with exit code 0: %d\n", proper_counter);
     printf("Child processes with exit code 1: %d\n", wrong_counter);
 }
 
 int main(int argc, const char * argv[]) {
-    
+
     successive_forks();
     wait_function();
-    
+
     #ifdef WITH_SIGNALS
     for(int i = 1; i < NSIG; i++){
         signal(i, SIG_DFL);
